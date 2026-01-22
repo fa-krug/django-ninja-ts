@@ -4,17 +4,48 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import platform
 import shutil
 import subprocess
 import tempfile
 import time
-from typing import Any
+from typing import Any, TypedDict
 
 from django.conf import settings
 from django.core.management.commands.runserver import Command as RunserverCommand
 from django.utils.module_loading import import_string
+
+logger = logging.getLogger(__name__)
+
+# Timeout for subprocess calls (in seconds)
+GENERATOR_TIMEOUT = 120
+
+
+class OpenAPIInfo(TypedDict, total=False):
+    """TypedDict for OpenAPI info object."""
+
+    title: str
+    version: str
+    description: str
+
+
+class OpenAPISchema(TypedDict, total=False):
+    """TypedDict for OpenAPI schema structure."""
+
+    openapi: str
+    info: OpenAPIInfo
+    paths: dict[str, Any]
+    components: dict[str, Any]
+    servers: list[dict[str, Any]]
+    tags: list[dict[str, Any]]
+
+
+class SchemaValidationError(Exception):
+    """Raised when the OpenAPI schema is invalid."""
+
+    pass
 
 
 class Command(RunserverCommand):
@@ -43,6 +74,10 @@ class Command(RunserverCommand):
         if delay > 0:
             time.sleep(delay)
 
+    def _get_platform(self) -> str:
+        """Get the current platform name in lowercase."""
+        return platform.system().lower()
+
     def _check_dependencies(self) -> bool:
         """Verify that npx and java are available."""
         missing: list[str] = []
@@ -60,10 +95,11 @@ class Command(RunserverCommand):
             )
         )
 
-        os_name = platform.system().lower()
+        os_name = self._get_platform()
 
         if "node" in missing:
             self.stdout.write(self.style.WARNING("  [Node.js missing]"))
+            logger.warning("Node.js (npx) is not installed")
             if "darwin" in os_name:
                 self.stdout.write("    Run: brew install node")
             elif "linux" in os_name:
@@ -73,6 +109,7 @@ class Command(RunserverCommand):
 
         if "java" in missing:
             self.stdout.write(self.style.WARNING("  [Java JRE missing]"))
+            logger.warning("Java JRE is not installed")
             if "darwin" in os_name:
                 self.stdout.write("    Run: brew install openjdk")
             elif "linux" in os_name:
@@ -83,12 +120,40 @@ class Command(RunserverCommand):
         self.stdout.write("-" * 30)
         return False
 
+    def _validate_schema(self, schema: dict[str, Any]) -> None:
+        """
+        Validate that the schema is a valid OpenAPI schema.
+
+        Args:
+            schema: The schema dictionary to validate.
+
+        Raises:
+            SchemaValidationError: If the schema is missing required fields.
+        """
+        required_fields = ["openapi", "info", "paths"]
+        missing_fields = [field for field in required_fields if field not in schema]
+
+        if missing_fields:
+            raise SchemaValidationError(
+                f"Invalid OpenAPI schema: missing required fields: {', '.join(missing_fields)}"
+            )
+
+        # Validate info has required title field
+        info = schema.get("info", {})
+        if not isinstance(info, dict) or "title" not in info:
+            raise SchemaValidationError(
+                "Invalid OpenAPI schema: 'info' must contain 'title'"
+            )
+
     def _generate_client(self) -> None:
         """Generate the TypeScript client if the schema has changed."""
         api_path: str | None = getattr(settings, "NINJA_TS_API", None)
         output_dir: str | None = getattr(settings, "NINJA_TS_OUTPUT_DIR", None)
 
         if not api_path or not output_dir:
+            logger.debug(
+                "TypeScript client generation skipped: NINJA_TS_API or NINJA_TS_OUTPUT_DIR not configured"
+            )
             return
 
         try:
@@ -97,19 +162,60 @@ class Command(RunserverCommand):
             hash_file = os.path.join(output_dir, ".schema.hash")
 
             # Load API
+            logger.debug(f"Loading API from: {api_path}")
             api = import_string(api_path)
-            schema_dict: dict[str, Any] = api.get_openapi_schema()
 
-            # Calculate Hash
-            schema_str = json.dumps(schema_dict, sort_keys=True).encode("utf-8")
-            new_hash = hashlib.md5(schema_str).hexdigest()
+            # Get schema and validate
+            if not hasattr(api, "get_openapi_schema"):
+                raise AttributeError(
+                    f"API object at '{api_path}' does not have 'get_openapi_schema' method. "
+                    "Ensure NINJA_TS_API points to a valid NinjaAPI instance."
+                )
+
+            schema_dict: dict[str, Any] = api.get_openapi_schema()
+            self._validate_schema(schema_dict)
+
+            # Calculate Hash using SHA256
+            try:
+                schema_str = json.dumps(schema_dict, sort_keys=True).encode("utf-8")
+            except TypeError as e:
+                raise TypeError(
+                    f"Failed to serialize OpenAPI schema to JSON: {e}. "
+                    "Ensure the schema contains only JSON-serializable types."
+                ) from e
+
+            new_hash = hashlib.sha256(schema_str).hexdigest()
 
             # Compare Hash
             if self._is_schema_changed(new_hash, hash_file):
                 self._run_generator(schema_dict, output_dir, hash_file, new_hash)
+            else:
+                logger.debug("Schema unchanged, skipping generation")
 
-        except Exception as e:
-            self.stdout.write(self.style.ERROR(f"Generation Error: {e}"))
+        except ModuleNotFoundError as e:
+            error_msg = f"Module not found: {e}. Check that NINJA_TS_API path is correct."
+            self.stdout.write(self.style.ERROR(f"Generation Error: {error_msg}"))
+            logger.error(error_msg)
+
+        except AttributeError as e:
+            error_msg = str(e)
+            self.stdout.write(self.style.ERROR(f"Generation Error: {error_msg}"))
+            logger.error(error_msg)
+
+        except SchemaValidationError as e:
+            error_msg = str(e)
+            self.stdout.write(self.style.ERROR(f"Generation Error: {error_msg}"))
+            logger.error(error_msg)
+
+        except TypeError as e:
+            error_msg = str(e)
+            self.stdout.write(self.style.ERROR(f"Generation Error: {error_msg}"))
+            logger.error(error_msg)
+
+        except OSError as e:
+            error_msg = f"File system error: {e}"
+            self.stdout.write(self.style.ERROR(f"Generation Error: {error_msg}"))
+            logger.error(error_msg)
 
     def _is_schema_changed(self, new_hash: str, hash_file: str) -> bool:
         """Check if the schema has changed since last generation."""
@@ -132,6 +238,11 @@ class Command(RunserverCommand):
         tmp_path: str | None = None
 
         try:
+            # Check output directory is writable
+            parent_dir = os.path.dirname(output_dir) or "."
+            if os.path.exists(parent_dir) and not os.access(parent_dir, os.W_OK):
+                raise OSError(f"Output directory parent is not writable: {parent_dir}")
+
             # Write schema to temp file
             with tempfile.NamedTemporaryFile(
                 mode="w+", suffix=".json", delete=False
@@ -151,8 +262,8 @@ class Command(RunserverCommand):
                 ],
             )
 
-            # Windows needs shell=True for npx if it's a batch file
-            use_shell = os.name == "nt"
+            # Use platform detection consistently
+            use_shell = self._get_platform() == "windows"
             cmd = (
                 ["npx", "openapi-generator-cli"]
                 + cmd_args
@@ -160,13 +271,20 @@ class Command(RunserverCommand):
             )
 
             self.stdout.write(f"Generating Client to {output_dir}...")
-            subprocess.run(
+            logger.info(f"Running openapi-generator-cli with output: {output_dir}")
+
+            result = subprocess.run(
                 cmd,
                 check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 shell=use_shell,
+                timeout=GENERATOR_TIMEOUT,
             )
+
+            # Log stdout if present (at debug level)
+            if result.stdout:
+                logger.debug(f"Generator output: {result.stdout.decode('utf-8', errors='replace')}")
 
             # Save new hash
             os.makedirs(output_dir, exist_ok=True)
@@ -174,13 +292,29 @@ class Command(RunserverCommand):
                 f.write(new_hash)
 
             self.stdout.write(self.style.SUCCESS("Client generation successful."))
+            logger.info("TypeScript client generation completed successfully")
 
-        except subprocess.CalledProcessError:
-            self.stdout.write(
-                self.style.ERROR(
-                    "Client generation failed. Check console for details."
-                )
-            )
+        except subprocess.CalledProcessError as e:
+            stderr_output = ""
+            if e.stderr:
+                stderr_output = e.stderr.decode("utf-8", errors="replace")
+                logger.error(f"Generator stderr: {stderr_output}")
+
+            error_msg = "Client generation failed."
+            if stderr_output:
+                error_msg += f" Error: {stderr_output[:500]}"  # Truncate long errors
+
+            self.stdout.write(self.style.ERROR(error_msg))
+
+        except subprocess.TimeoutExpired:
+            error_msg = f"Client generation timed out after {GENERATOR_TIMEOUT} seconds."
+            self.stdout.write(self.style.ERROR(error_msg))
+            logger.error(error_msg)
+
+        except OSError as e:
+            error_msg = f"File system error during generation: {e}"
+            self.stdout.write(self.style.ERROR(error_msg))
+            logger.error(error_msg)
 
         finally:
             if tmp_path and os.path.exists(tmp_path):

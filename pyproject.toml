@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "django-ninja-ts"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Auto-generate TypeScript clients for Django Ninja during runserver"
 readme = "README.md"
 license = {text = "MIT"}
@@ -53,6 +53,9 @@ Issues = "https://github.com/fa-krug/django-ninja-ts/issues"
 
 [tool.setuptools.packages.find]
 include = ["django_ninja_ts*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "django_ninja_ts.__version__"}
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "tests.settings"
