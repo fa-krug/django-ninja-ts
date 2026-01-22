@@ -193,7 +193,9 @@ class Command(RunserverCommand):
                 logger.debug("Schema unchanged, skipping generation")
 
         except ModuleNotFoundError as e:
-            error_msg = f"Module not found: {e}. Check that NINJA_TS_API path is correct."
+            error_msg = (
+                f"Module not found: {e}. Check that NINJA_TS_API path is correct."
+            )
             self.stdout.write(self.style.ERROR(f"Generation Error: {error_msg}"))
             logger.error(error_msg)
 
@@ -222,7 +224,7 @@ class Command(RunserverCommand):
         if not os.path.exists(hash_file):
             return True
         try:
-            with open(hash_file, "r") as f:
+            with open(hash_file) as f:
                 return f.read().strip() != new_hash
         except OSError:
             return True
@@ -276,15 +278,16 @@ class Command(RunserverCommand):
             result = subprocess.run(
                 cmd,
                 check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 shell=use_shell,
                 timeout=GENERATOR_TIMEOUT,
             )
 
             # Log stdout if present (at debug level)
             if result.stdout:
-                logger.debug(f"Generator output: {result.stdout.decode('utf-8', errors='replace')}")
+                logger.debug(
+                    f"Generator output: {result.stdout.decode('utf-8', errors='replace')}"
+                )
 
             # Save new hash
             os.makedirs(output_dir, exist_ok=True)
@@ -307,7 +310,9 @@ class Command(RunserverCommand):
             self.stdout.write(self.style.ERROR(error_msg))
 
         except subprocess.TimeoutExpired:
-            error_msg = f"Client generation timed out after {GENERATOR_TIMEOUT} seconds."
+            error_msg = (
+                f"Client generation timed out after {GENERATOR_TIMEOUT} seconds."
+            )
             self.stdout.write(self.style.ERROR(error_msg))
             logger.error(error_msg)
 

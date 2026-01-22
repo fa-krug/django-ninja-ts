@@ -25,7 +25,9 @@ class NinjaTsConfig(AppConfig):
         register(check_ninja_ts_configuration)
 
 
-def check_ninja_ts_configuration(app_configs: Any, **kwargs: Any) -> list[Error | Warning]:
+def check_ninja_ts_configuration(
+    app_configs: Any, **kwargs: Any
+) -> list[Error | Warning]:
     """
     Django system check for django-ninja-ts configuration.
 
