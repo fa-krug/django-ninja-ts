@@ -48,7 +48,7 @@ NINJA_TS_OUTPUT_DIR = os.path.join(BASE_DIR, '../frontend/src/app/shared/api')
 NINJA_TS_DEBOUNCE_SECONDS = 0.5
 
 # Optional: Override generator arguments
-# Default: ['generate', '-g', 'typescript-angular', '-p', 'removeOperationIdPrefix=true']
+# Default: ['generate', '-g', 'typescript-fetch', '-p', 'removeOperationIdPrefix=true']
 # NINJA_TS_CMD_ARGS = ['generate', '-g', 'typescript-axios']
 ```
 
@@ -72,19 +72,19 @@ NINJA_TS_DEBOUNCE_SECONDS = 0.5
 ### Default Generator Arguments
 
 ```python
-['generate', '-g', 'typescript-angular', '-p', 'removeOperationIdPrefix=true']
+['generate', '-g', 'typescript-fetch', '-p', 'removeOperationIdPrefix=true']
 ```
 
-### Example: Using Axios Instead of Angular
+### Example: Using Axios
 
 ```python
 NINJA_TS_CMD_ARGS = ['generate', '-g', 'typescript-axios']
 ```
 
-### Example: Using Fetch API
+### Example: Using Angular
 
 ```python
-NINJA_TS_CMD_ARGS = ['generate', '-g', 'typescript-fetch']
+NINJA_TS_CMD_ARGS = ['generate', '-g', 'typescript-angular', '-p', 'removeOperationIdPrefix=true']
 ```
 
 ## License
