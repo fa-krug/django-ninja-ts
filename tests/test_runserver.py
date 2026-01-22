@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 import tempfile
@@ -12,7 +11,6 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-from django.core.management import call_command
 
 from django_ninja_ts.management.commands.runserver import (
     Command,
@@ -165,12 +163,16 @@ class TestDebounce:
         """Test debounce with default delay setting."""
         command = Command()
 
-        with patch("time.sleep") as mock_sleep:
+        with patch("time.sleep"):
             with patch.object(
                 type(command),
                 "_debounce",
                 lambda self: time.sleep(
-                    getattr(__import__("django.conf", fromlist=["settings"]).settings, "NINJA_TS_DEBOUNCE_SECONDS", 1.0)
+                    getattr(
+                        __import__("django.conf", fromlist=["settings"]).settings,
+                        "NINJA_TS_DEBOUNCE_SECONDS",
+                        1.0,
+                    )
                 ),
             ):
                 pass
@@ -264,9 +266,7 @@ class TestGenerateClient:
 
         mock_api = MagicMock(spec=[])  # No get_openapi_schema attribute
 
-        with patch(
-            "django.conf.settings.NINJA_TS_API", "myapp.api.api", create=True
-        ):
+        with patch("django.conf.settings.NINJA_TS_API", "myapp.api.api", create=True):
             with patch(
                 "django.conf.settings.NINJA_TS_OUTPUT_DIR", "/tmp/output", create=True
             ):
@@ -296,9 +296,7 @@ class TestGenerateClient:
             "non_serializable": object(),  # This will cause TypeError
         }
 
-        with patch(
-            "django.conf.settings.NINJA_TS_API", "myapp.api.api", create=True
-        ):
+        with patch("django.conf.settings.NINJA_TS_API", "myapp.api.api", create=True):
             with patch(
                 "django.conf.settings.NINJA_TS_OUTPUT_DIR", "/tmp/output", create=True
             ):
@@ -595,9 +593,7 @@ class TestCommandIntegration:
         command._check_dependencies = mock_check_deps  # type: ignore[method-assign]
         command._generate_client = mock_generate  # type: ignore[method-assign]
 
-        with patch.object(
-            Command.__bases__[0], "inner_run", mock_super_inner_run
-        ):
+        with patch.object(Command.__bases__[0], "inner_run", mock_super_inner_run):
             command.inner_run()
 
         assert call_order == ["debounce", "check_deps", "generate", "super_inner_run"]
@@ -624,9 +620,7 @@ class TestCommandIntegration:
         command._check_dependencies = mock_check_deps  # type: ignore[method-assign]
         command._generate_client = mock_generate  # type: ignore[method-assign]
 
-        with patch.object(
-            Command.__bases__[0], "inner_run", mock_super_inner_run
-        ):
+        with patch.object(Command.__bases__[0], "inner_run", mock_super_inner_run):
             command.inner_run()
 
         # generate should NOT be in the call order
