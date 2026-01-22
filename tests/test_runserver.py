@@ -767,7 +767,9 @@ class TestConfigurationCheck:
         from django_ninja_ts.apps import check_ninja_ts_configuration
 
         with patch("django.conf.settings.NINJA_TS_API", "myapp.api.api", create=True):
-            with patch("django.conf.settings.NINJA_TS_OUTPUT_DIR", "/tmp", create=True):
+            with patch(
+                "django.conf.settings.NINJA_TS_OUTPUT_DIR", "/tmp/output", create=True
+            ):
                 with patch(
                     "django.conf.settings.NINJA_TS_DEBOUNCE_SECONDS",
                     0.5,
