@@ -145,9 +145,7 @@ class Command(RunserverCommand):
                 [
                     "generate",
                     "-g",
-                    "typescript-angular",
-                    "-p",
-                    "removeOperationIdPrefix=true",
+                    "typescript-fetch",
                 ],
             )
 
