@@ -229,6 +229,30 @@ LOGGING = {
 
 This package works with any version of `@openapitools/openapi-generator-cli` available via npm. The generator is automatically downloaded on first use.
 
+## Contributing
+
+### Commit Messages
+
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) for commit messages.
+
+**Format:** `<type>(<scope>): <description>`
+
+**Types:**
+- `feat` - New features
+- `fix` - Bug fixes
+- `docs` - Documentation changes
+- `style` - Code style changes (formatting, whitespace)
+- `refactor` - Code refactoring without feature changes
+- `test` - Adding or updating tests
+- `chore` - Maintenance tasks, dependencies, configs
+
+**Examples:**
+```bash
+feat(generator): add support for axios client
+fix(runserver): handle missing Java dependency gracefully
+docs(readme): add troubleshooting section
+```
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
