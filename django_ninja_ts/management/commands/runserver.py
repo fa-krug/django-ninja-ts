@@ -146,6 +146,8 @@ class Command(RunserverCommand):
                     "generate",
                     "-g",
                     "typescript-fetch",
+                    "-p",
+                    "removeOperationIdPrefix=true",
                 ],
             )
 

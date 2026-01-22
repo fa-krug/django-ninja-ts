@@ -48,7 +48,7 @@ NINJA_TS_OUTPUT_DIR = os.path.join(BASE_DIR, '../frontend/src/app/shared/api')
 NINJA_TS_DEBOUNCE_SECONDS = 0.5
 
 # Optional: Override generator arguments
-# Default: ['generate', '-g', 'typescript-fetch']
+# Default: ['generate', '-g', 'typescript-fetch', '-p', 'removeOperationIdPrefix=true']
 # NINJA_TS_CMD_ARGS = ['generate', '-g', 'typescript-axios']
 ```
 
@@ -72,7 +72,7 @@ NINJA_TS_DEBOUNCE_SECONDS = 0.5
 ### Default Generator Arguments
 
 ```python
-['generate', '-g', 'typescript-fetch']
+['generate', '-g', 'typescript-fetch', '-p', 'removeOperationIdPrefix=true']
 ```
 
 ### Example: Using Axios
