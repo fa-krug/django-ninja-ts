@@ -18,78 +18,6 @@ from django_ninja_ts.management.commands.runserver import (
 )
 
 
-class TestCheckDependencies:
-    """Tests for the _check_dependencies method."""
-
-    def test_all_dependencies_present(self) -> None:
-        """Test that True is returned when all dependencies are present."""
-        command = Command()
-        command.stdout = StringIO()
-        command.style = MagicMock()
-
-        with patch("shutil.which") as mock_which:
-            mock_which.return_value = "/usr/bin/mock"
-            result = command._check_dependencies()
-
-        assert result is True
-
-    def test_missing_node(self) -> None:
-        """Test that False is returned when node is missing."""
-        command = Command()
-        command.stdout = StringIO()
-        command.style = MagicMock()
-        command.style.ERROR = lambda x: f"ERROR: {x}"
-        command.style.WARNING = lambda x: f"WARNING: {x}"
-
-        def which_side_effect(name: str) -> str | None:
-            if name == "npx":
-                return None
-            return "/usr/bin/java"
-
-        with patch("shutil.which", side_effect=which_side_effect):
-            result = command._check_dependencies()
-
-        assert result is False
-        output = command.stdout.getvalue()
-        assert "Node.js missing" in output
-
-    def test_missing_java(self) -> None:
-        """Test that False is returned when java is missing."""
-        command = Command()
-        command.stdout = StringIO()
-        command.style = MagicMock()
-        command.style.ERROR = lambda x: f"ERROR: {x}"
-        command.style.WARNING = lambda x: f"WARNING: {x}"
-
-        def which_side_effect(name: str) -> str | None:
-            if name == "java":
-                return None
-            return "/usr/bin/npx"
-
-        with patch("shutil.which", side_effect=which_side_effect):
-            result = command._check_dependencies()
-
-        assert result is False
-        output = command.stdout.getvalue()
-        assert "Java JRE missing" in output
-
-    def test_missing_both_dependencies(self) -> None:
-        """Test that False is returned when both dependencies are missing."""
-        command = Command()
-        command.stdout = StringIO()
-        command.style = MagicMock()
-        command.style.ERROR = lambda x: f"ERROR: {x}"
-        command.style.WARNING = lambda x: f"WARNING: {x}"
-
-        with patch("shutil.which", return_value=None):
-            result = command._check_dependencies()
-
-        assert result is False
-        output = command.stdout.getvalue()
-        assert "Node.js missing" in output
-        assert "Java JRE missing" in output
-
-
 class TestIsSchemaChanged:
     """Tests for the _is_schema_changed method."""
 
@@ -579,10 +507,6 @@ class TestCommandIntegration:
         def mock_debounce() -> None:
             call_order.append("debounce")
 
-        def mock_check_deps() -> bool:
-            call_order.append("check_deps")
-            return True
-
         def mock_generate() -> None:
             call_order.append("generate")
 
@@ -590,58 +514,12 @@ class TestCommandIntegration:
             call_order.append("super_inner_run")
 
         command._debounce = mock_debounce  # type: ignore[method-assign]
-        command._check_dependencies = mock_check_deps  # type: ignore[method-assign]
         command._generate_client = mock_generate  # type: ignore[method-assign]
 
         with patch.object(Command.__bases__[0], "inner_run", mock_super_inner_run):
             command.inner_run()
 
-        assert call_order == ["debounce", "check_deps", "generate", "super_inner_run"]
-
-    def test_skips_generation_when_deps_missing(self) -> None:
-        """Test that generation is skipped when dependencies are missing."""
-        command = Command()
-        call_order: list[str] = []
-
-        def mock_debounce() -> None:
-            call_order.append("debounce")
-
-        def mock_check_deps() -> bool:
-            call_order.append("check_deps")
-            return False  # Dependencies missing
-
-        def mock_generate() -> None:
-            call_order.append("generate")
-
-        def mock_super_inner_run(*args: Any, **kwargs: Any) -> None:
-            call_order.append("super_inner_run")
-
-        command._debounce = mock_debounce  # type: ignore[method-assign]
-        command._check_dependencies = mock_check_deps  # type: ignore[method-assign]
-        command._generate_client = mock_generate  # type: ignore[method-assign]
-
-        with patch.object(Command.__bases__[0], "inner_run", mock_super_inner_run):
-            command.inner_run()
-
-        # generate should NOT be in the call order
-        assert call_order == ["debounce", "check_deps", "super_inner_run"]
-
-
-class TestGetPlatform:
-    """Tests for the _get_platform method."""
-
-    def test_returns_lowercase_platform(self) -> None:
-        """Test that platform is returned in lowercase."""
-        command = Command()
-
-        with patch("platform.system", return_value="Linux"):
-            assert command._get_platform() == "linux"
-
-        with patch("platform.system", return_value="Darwin"):
-            assert command._get_platform() == "darwin"
-
-        with patch("platform.system", return_value="Windows"):
-            assert command._get_platform() == "windows"
+        assert call_order == ["debounce", "generate", "super_inner_run"]
 
 
 class TestConfigurationCheck:

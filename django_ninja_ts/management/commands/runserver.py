@@ -7,7 +7,6 @@ import json
 import logging
 import os
 import platform
-import shutil
 import subprocess
 import tempfile
 import time
@@ -56,9 +55,8 @@ class Command(RunserverCommand):
         # 1. Debounce (Wait for rapid file saves to settle)
         self._debounce()
 
-        # 2. Check dependencies and run generation
-        if self._check_dependencies():
-            self._generate_client()
+        # 2. Run generation
+        self._generate_client()
 
         # 3. Start the actual Django server
         super().inner_run(*args, **options)
@@ -73,52 +71,6 @@ class Command(RunserverCommand):
         delay: float = getattr(settings, "NINJA_TS_DEBOUNCE_SECONDS", 1.0)
         if delay > 0:
             time.sleep(delay)
-
-    def _get_platform(self) -> str:
-        """Get the current platform name in lowercase."""
-        return platform.system().lower()
-
-    def _check_dependencies(self) -> bool:
-        """Verify that npx and java are available."""
-        missing: list[str] = []
-        if not shutil.which("npx"):
-            missing.append("node")
-        if not shutil.which("java"):
-            missing.append("java")
-
-        if not missing:
-            return True
-
-        self.stdout.write(
-            self.style.ERROR(
-                "TypeScript Client Generation Failed: Missing Dependencies"
-            )
-        )
-
-        os_name = self._get_platform()
-
-        if "node" in missing:
-            self.stdout.write(self.style.WARNING("  [Node.js missing]"))
-            logger.warning("Node.js (npx) is not installed")
-            if "darwin" in os_name:
-                self.stdout.write("    Run: brew install node")
-            elif "linux" in os_name:
-                self.stdout.write("    Run: sudo apt install nodejs npm")
-            elif "windows" in os_name:
-                self.stdout.write("    Download: https://nodejs.org/")
-
-        if "java" in missing:
-            self.stdout.write(self.style.WARNING("  [Java JRE missing]"))
-            logger.warning("Java JRE is not installed")
-            if "darwin" in os_name:
-                self.stdout.write("    Run: brew install openjdk")
-            elif "linux" in os_name:
-                self.stdout.write("    Run: sudo apt install default-jre")
-            elif "windows" in os_name:
-                self.stdout.write("    Download: https://www.java.com/download/")
-
-        self.stdout.write("-" * 30)
-        return False
 
     def _validate_schema(self, schema: dict[str, Any]) -> None:
         """
@@ -265,7 +217,7 @@ class Command(RunserverCommand):
             )
 
             # Use platform detection consistently
-            use_shell = self._get_platform() == "windows"
+            use_shell = platform.system().lower() == "windows"
             cmd = (
                 ["npx", "openapi-generator-cli"]
                 + cmd_args
