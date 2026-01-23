@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import subprocess
 import tempfile
 import time
 from io import StringIO
@@ -331,9 +330,17 @@ class TestRunGenerator:
             output_dir = os.path.join(tmpdir, "output")
             hash_file = os.path.join(output_dir, ".schema.hash")
 
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MagicMock(returncode=0, stdout=b"", stderr=b"")
-                command._run_generator(schema_dict, output_dir, hash_file, "abc123")
+            with patch("django.conf.settings.NINJA_TS_FORMAT", "fetch", create=True):
+                with patch(
+                    "django_ninja_ts.management.commands.runserver.generate_typescript_client"
+                ) as mock_generate:
+                    command._run_generator(schema_dict, output_dir, hash_file, "abc123")
+
+            # Verify generate_typescript_client was called correctly
+            mock_generate.assert_called_once()
+            call_kwargs = mock_generate.call_args
+            assert call_kwargs[1]["openapi_spec"] == schema_dict
+            assert call_kwargs[1]["output_path"] == output_dir
 
             # Verify hash file was written
             assert os.path.exists(hash_file)
@@ -360,11 +367,12 @@ class TestRunGenerator:
             output_dir = os.path.join(tmpdir, "output")
             hash_file = os.path.join(output_dir, ".schema.hash")
 
-            with patch("subprocess.run") as mock_run:
-                error = subprocess.CalledProcessError(1, "npx")
-                error.stderr = b"Some error message"
-                mock_run.side_effect = error
-                command._run_generator(schema_dict, output_dir, hash_file, "abc123")
+            with patch("django.conf.settings.NINJA_TS_FORMAT", "fetch", create=True):
+                with patch(
+                    "django_ninja_ts.management.commands.runserver.generate_typescript_client"
+                ) as mock_generate:
+                    mock_generate.side_effect = ValueError("Invalid spec")
+                    command._run_generator(schema_dict, output_dir, hash_file, "abc123")
 
             # Verify hash file was NOT written on failure
             assert not os.path.exists(hash_file)
@@ -372,101 +380,12 @@ class TestRunGenerator:
             output = command.stdout.getvalue()
             assert "ERROR:" in output
 
-    def test_generation_failure_with_stderr(self) -> None:
-        """Test that stderr is captured and logged on failure."""
-        command = Command()
-        command.stdout = StringIO()
-        command.style = MagicMock()
-        command.style.ERROR = lambda x: f"ERROR: {x}"
-
-        schema_dict: dict[str, Any] = {
-            "openapi": "3.0.0",
-            "info": {"title": "Test"},
-            "paths": {},
-        }
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_dir = os.path.join(tmpdir, "output")
-            hash_file = os.path.join(output_dir, ".schema.hash")
-
-            with patch("subprocess.run") as mock_run:
-                error = subprocess.CalledProcessError(1, "npx")
-                error.stderr = b"Detailed error from generator"
-                mock_run.side_effect = error
-                command._run_generator(schema_dict, output_dir, hash_file, "abc123")
-
-            output = command.stdout.getvalue()
-            assert "Detailed error from generator" in output
-
-    def test_temp_file_cleanup(self) -> None:
-        """Test that temporary files are cleaned up after generation."""
-        command = Command()
-        command.stdout = StringIO()
-        command.style = MagicMock()
-        command.style.SUCCESS = lambda x: f"SUCCESS: {x}"
-
-        schema_dict: dict[str, Any] = {
-            "openapi": "3.0.0",
-            "info": {"title": "Test"},
-            "paths": {},
-        }
-        temp_files_created: list[str] = []
-
-        original_named_temp = tempfile.NamedTemporaryFile
-
-        def tracking_temp(*args: Any, **kwargs: Any) -> Any:
-            result = original_named_temp(*args, **kwargs)
-            temp_files_created.append(result.name)
-            return result
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_dir = os.path.join(tmpdir, "output")
-            hash_file = os.path.join(output_dir, ".schema.hash")
-
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MagicMock(returncode=0, stdout=b"", stderr=b"")
-                with patch(
-                    "tempfile.NamedTemporaryFile",
-                    side_effect=tracking_temp,
-                ):
-                    command._run_generator(schema_dict, output_dir, hash_file, "abc123")
-
-            # Verify temp file was cleaned up
-            for temp_file in temp_files_created:
-                assert not os.path.exists(temp_file)
-
-    def test_timeout_handling(self) -> None:
-        """Test that subprocess timeout is handled gracefully."""
-        command = Command()
-        command.stdout = StringIO()
-        command.style = MagicMock()
-        command.style.ERROR = lambda x: f"ERROR: {x}"
-
-        schema_dict: dict[str, Any] = {
-            "openapi": "3.0.0",
-            "info": {"title": "Test"},
-            "paths": {},
-        }
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_dir = os.path.join(tmpdir, "output")
-            hash_file = os.path.join(output_dir, ".schema.hash")
-
-            with patch("subprocess.run") as mock_run:
-                mock_run.side_effect = subprocess.TimeoutExpired("npx", 120)
-                command._run_generator(schema_dict, output_dir, hash_file, "abc123")
-
-            output = command.stdout.getvalue()
-            assert "ERROR:" in output
-            assert "timed out" in output.lower()
-
     def test_unwritable_output_directory(self) -> None:
         """Test that unwritable output directory is handled."""
         command = Command()
         command.stdout = StringIO()
         command.style = MagicMock()
         command.style.ERROR = lambda x: f"ERROR: {x}"
-        command.style.SUCCESS = lambda x: f"SUCCESS: {x}"
 
         schema_dict: dict[str, Any] = {
             "openapi": "3.0.0",
@@ -486,6 +405,35 @@ class TestRunGenerator:
             output = command.stdout.getvalue()
             assert "ERROR:" in output
             assert "writable" in output.lower()
+
+    def test_generation_with_axios_format(self) -> None:
+        """Test generation with axios format."""
+        command = Command()
+        command.stdout = StringIO()
+        command.style = MagicMock()
+        command.style.SUCCESS = lambda x: f"SUCCESS: {x}"
+
+        schema_dict: dict[str, Any] = {
+            "openapi": "3.0.0",
+            "info": {"title": "Test"},
+            "paths": {},
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_dir = os.path.join(tmpdir, "output")
+            hash_file = os.path.join(output_dir, ".schema.hash")
+
+            with patch("django.conf.settings.NINJA_TS_FORMAT", "axios", create=True):
+                with patch(
+                    "django_ninja_ts.management.commands.runserver.generate_typescript_client"
+                ) as mock_generate:
+                    from openapi_ts_client import ClientFormat
+
+                    command._run_generator(schema_dict, output_dir, hash_file, "abc123")
+
+                    # Verify correct format was used
+                    call_kwargs = mock_generate.call_args
+                    assert call_kwargs[1]["output_format"] == ClientFormat.AXIOS
 
 
 class TestCommandIntegration:

@@ -6,20 +6,21 @@ import hashlib
 import json
 import logging
 import os
-import platform
-import subprocess
-import tempfile
 import time
 from typing import Any, TypedDict
 
 from django.conf import settings
 from django.core.management.commands.runserver import Command as RunserverCommand
 from django.utils.module_loading import import_string
+from openapi_ts_client import ClientFormat, generate_typescript_client
 
 logger = logging.getLogger(__name__)
 
-# Timeout for subprocess calls (in seconds)
-GENERATOR_TIMEOUT = 120
+FORMAT_MAP = {
+    "fetch": ClientFormat.FETCH,
+    "axios": ClientFormat.AXIOS,
+    "angular": ClientFormat.ANGULAR,
+}
 
 
 class OpenAPIInfo(TypedDict, total=False):
@@ -188,58 +189,25 @@ class Command(RunserverCommand):
         hash_file: str,
         new_hash: str,
     ) -> None:
-        """Run the OpenAPI generator to create the TypeScript client."""
-        tmp_path: str | None = None
-
+        """Run the TypeScript client generator."""
         try:
             # Check output directory is writable
             parent_dir = os.path.dirname(output_dir) or "."
             if os.path.exists(parent_dir) and not os.access(parent_dir, os.W_OK):
                 raise OSError(f"Output directory parent is not writable: {parent_dir}")
 
-            # Write schema to temp file
-            with tempfile.NamedTemporaryFile(
-                mode="w+", suffix=".json", delete=False
-            ) as tmp:
-                json.dump(schema_dict, tmp)
-                tmp_path = tmp.name
+            # Get format from settings
+            format_name: str = getattr(settings, "NINJA_TS_FORMAT", "fetch")
+            client_format = FORMAT_MAP[format_name]
 
-            cmd_args: list[str] = getattr(
-                settings,
-                "NINJA_TS_CMD_ARGS",
-                [
-                    "generate",
-                    "-g",
-                    "typescript-fetch",
-                    "-p",
-                    "removeOperationIdPrefix=true",
-                ],
+            self.stdout.write(f"Generating {format_name} client to {output_dir}...")
+            logger.info(f"Generating {format_name} TypeScript client to: {output_dir}")
+
+            generate_typescript_client(
+                openapi_spec=schema_dict,
+                output_format=client_format,
+                output_path=output_dir,
             )
-
-            # Use platform detection consistently
-            use_shell = platform.system().lower() == "windows"
-            cmd = (
-                ["npx", "openapi-generator-cli"]
-                + cmd_args
-                + ["-o", output_dir, "-i", tmp_path]
-            )
-
-            self.stdout.write(f"Generating Client to {output_dir}...")
-            logger.info(f"Running openapi-generator-cli with output: {output_dir}")
-
-            result = subprocess.run(
-                cmd,
-                check=True,
-                capture_output=True,
-                shell=use_shell,
-                timeout=GENERATOR_TIMEOUT,
-            )
-
-            # Log stdout if present (at debug level)
-            if result.stdout:
-                logger.debug(
-                    f"Generator output: {result.stdout.decode('utf-8', errors='replace')}"
-                )
 
             # Save new hash
             os.makedirs(output_dir, exist_ok=True)
@@ -249,22 +217,8 @@ class Command(RunserverCommand):
             self.stdout.write(self.style.SUCCESS("Client generation successful."))
             logger.info("TypeScript client generation completed successfully")
 
-        except subprocess.CalledProcessError as e:
-            stderr_output = ""
-            if e.stderr:
-                stderr_output = e.stderr.decode("utf-8", errors="replace")
-                logger.error(f"Generator stderr: {stderr_output}")
-
-            error_msg = "Client generation failed."
-            if stderr_output:
-                error_msg += f" Error: {stderr_output[:500]}"  # Truncate long errors
-
-            self.stdout.write(self.style.ERROR(error_msg))
-
-        except subprocess.TimeoutExpired:
-            error_msg = (
-                f"Client generation timed out after {GENERATOR_TIMEOUT} seconds."
-            )
+        except ValueError as e:
+            error_msg = f"Invalid OpenAPI spec: {e}"
             self.stdout.write(self.style.ERROR(error_msg))
             logger.error(error_msg)
 
@@ -272,7 +226,3 @@ class Command(RunserverCommand):
             error_msg = f"File system error during generation: {e}"
             self.stdout.write(self.style.ERROR(error_msg))
             logger.error(error_msg)
-
-        finally:
-            if tmp_path and os.path.exists(tmp_path):
-                os.remove(tmp_path)
