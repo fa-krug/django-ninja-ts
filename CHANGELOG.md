@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v2.0.1 (2026-01-23)
+
+### Bug Fixes
+
+- **deps**: Update openapi-ts-client to 1.3.1 for integer key support
+  ([`8bc1c94`](https://github.com/fa-krug/django-ninja-ts/commit/8bc1c94b4652aa236490aeb1abfb3421ff47ac37))
+
+### Documentation
+
+- **readme**: Add NINJA_TS_CLEAN setting documentation
+  ([`023ab32`](https://github.com/fa-krug/django-ninja-ts/commit/023ab32d8836e4a5aa5520a89d809dc7ca9fff57))
+
+
 ## v2.0.0 (2026-01-23)
 
 ### Features
