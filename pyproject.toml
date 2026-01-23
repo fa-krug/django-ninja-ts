@@ -37,6 +37,7 @@ classifiers = [
 dependencies = [
     "Django>=4.0",
     "django-ninja>=1.0",
+    "openapi-ts-client>=1.0.0",
 ]
 
 [project.optional-dependencies]
