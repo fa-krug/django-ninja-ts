@@ -49,6 +49,10 @@ NINJA_TS_FORMAT = 'fetch'
 # Optional: Debounce time in seconds (prevents rapid rebuilds on "Save All")
 # Default: 1.0
 # NINJA_TS_DEBOUNCE_SECONDS = 0.5
+
+# Optional: Clear output directory before generation
+# Default: True
+# NINJA_TS_CLEAN = True
 ```
 
 ## How It Works
@@ -67,6 +71,7 @@ NINJA_TS_FORMAT = 'fetch'
 | `NINJA_TS_OUTPUT_DIR` | Yes | - | Directory where the TypeScript client will be generated |
 | `NINJA_TS_FORMAT` | No | `fetch` | Client format: `fetch`, `axios`, or `angular` |
 | `NINJA_TS_DEBOUNCE_SECONDS` | No | `1.0` | Delay before generation to handle rapid file saves |
+| `NINJA_TS_CLEAN` | No | `True` | Clear output directory before generation |
 
 ### Example: Using Axios
 
