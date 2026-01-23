@@ -734,33 +734,55 @@ class TestConfigurationCheck:
                     errors = check_ninja_ts_configuration(None)
                     assert any("E008" in str(e.id) for e in errors)
 
-    def test_cmd_args_not_list(self) -> None:
-        """Test that non-list NINJA_TS_CMD_ARGS raises error."""
+    def test_format_valid_values(self) -> None:
+        """Test that valid NINJA_TS_FORMAT values are accepted."""
         from django_ninja_ts.apps import check_ninja_ts_configuration
 
-        with patch("django.conf.settings.NINJA_TS_API", "myapp.api", create=True):
-            with patch("django.conf.settings.NINJA_TS_OUTPUT_DIR", "/tmp", create=True):
+        for format_value in ["fetch", "axios", "angular"]:
+            with patch(
+                "django.conf.settings.NINJA_TS_API", "myapp.api.api", create=True
+            ):
                 with patch(
-                    "django.conf.settings.NINJA_TS_CMD_ARGS",
-                    "not a list",
+                    "django.conf.settings.NINJA_TS_OUTPUT_DIR",
+                    "/tmp/output",
                     create=True,
                 ):
-                    errors = check_ninja_ts_configuration(None)
-                    assert any("E009" in str(e.id) for e in errors)
+                    with patch(
+                        "django.conf.settings.NINJA_TS_FORMAT",
+                        format_value,
+                        create=True,
+                    ):
+                        errors = check_ninja_ts_configuration(None)
+                        assert not any(
+                            "ninja_ts" in str(e.id) and "FORMAT" in str(e.msg).upper()
+                            for e in errors
+                        ), f"Format '{format_value}' should be valid"
 
-    def test_cmd_args_contains_non_string(self) -> None:
-        """Test that NINJA_TS_CMD_ARGS with non-strings raises error."""
+    def test_format_invalid_value(self) -> None:
+        """Test that invalid NINJA_TS_FORMAT raises error."""
         from django_ninja_ts.apps import check_ninja_ts_configuration
 
-        with patch("django.conf.settings.NINJA_TS_API", "myapp.api", create=True):
-            with patch("django.conf.settings.NINJA_TS_OUTPUT_DIR", "/tmp", create=True):
+        with patch("django.conf.settings.NINJA_TS_API", "myapp.api.api", create=True):
+            with patch(
+                "django.conf.settings.NINJA_TS_OUTPUT_DIR", "/tmp/output", create=True
+            ):
                 with patch(
-                    "django.conf.settings.NINJA_TS_CMD_ARGS",
-                    ["generate", 123],
-                    create=True,
+                    "django.conf.settings.NINJA_TS_FORMAT", "invalid", create=True
                 ):
                     errors = check_ninja_ts_configuration(None)
-                    assert any("E010" in str(e.id) for e in errors)
+                    assert any("E011" in str(e.id) for e in errors)
+
+    def test_format_not_string(self) -> None:
+        """Test that non-string NINJA_TS_FORMAT raises error."""
+        from django_ninja_ts.apps import check_ninja_ts_configuration
+
+        with patch("django.conf.settings.NINJA_TS_API", "myapp.api.api", create=True):
+            with patch(
+                "django.conf.settings.NINJA_TS_OUTPUT_DIR", "/tmp/output", create=True
+            ):
+                with patch("django.conf.settings.NINJA_TS_FORMAT", 123, create=True):
+                    errors = check_ninja_ts_configuration(None)
+                    assert any("E012" in str(e.id) for e in errors)
 
     def test_valid_configuration(self) -> None:
         """Test that valid configuration returns no errors."""
@@ -776,8 +798,8 @@ class TestConfigurationCheck:
                     create=True,
                 ):
                     with patch(
-                        "django.conf.settings.NINJA_TS_CMD_ARGS",
-                        ["generate", "-g", "typescript-axios"],
+                        "django.conf.settings.NINJA_TS_FORMAT",
+                        "fetch",
                         create=True,
                     ):
                         errors = check_ninja_ts_configuration(None)

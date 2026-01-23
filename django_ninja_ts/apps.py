@@ -143,23 +143,24 @@ def check_ninja_ts_configuration(
                 )
             )
 
-    # Check NINJA_TS_CMD_ARGS
-    cmd_args = getattr(settings, "NINJA_TS_CMD_ARGS", None)
-    if cmd_args is not None:
-        if not isinstance(cmd_args, list):
+    # Check NINJA_TS_FORMAT
+    format_value = getattr(settings, "NINJA_TS_FORMAT", None)
+    if format_value is not None:
+        valid_formats = ["fetch", "axios", "angular"]
+        if not isinstance(format_value, str):
             errors.append(
                 Error(
-                    "NINJA_TS_CMD_ARGS must be a list",
-                    hint="Set NINJA_TS_CMD_ARGS to a list of strings like ['generate', '-g', 'typescript-axios']",
-                    id="ninja_ts.E009",
+                    "NINJA_TS_FORMAT must be a string",
+                    hint=f"Set NINJA_TS_FORMAT to one of: {', '.join(valid_formats)}",
+                    id="ninja_ts.E012",
                 )
             )
-        elif not all(isinstance(arg, str) for arg in cmd_args):
+        elif format_value not in valid_formats:
             errors.append(
                 Error(
-                    "NINJA_TS_CMD_ARGS must contain only strings",
-                    hint="All items in NINJA_TS_CMD_ARGS must be strings",
-                    id="ninja_ts.E010",
+                    f"NINJA_TS_FORMAT '{format_value}' is not valid",
+                    hint=f"Set NINJA_TS_FORMAT to one of: {', '.join(valid_formats)}",
+                    id="ninja_ts.E011",
                 )
             )
 
