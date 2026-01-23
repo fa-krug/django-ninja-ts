@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(superpowers:brainstorming)",
+      "WebFetch(domain:pypi.org)",
+      "Bash(git check-ignore:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh api:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Skill(superpowers:using-git-worktrees)",
+      "Bash(git worktree:*)",
+      "Bash(pip install:*)",
+      "Bash(pip3 install:*)",
+      "Bash(pytest:*)",
+      "Skill(superpowers:writing-plans)",
+      "Skill(superpowers:subagent-driven-development)",
+      "Bash(python3:*)",
+      "Bash(ruff check:*)",
+      "Bash(ruff format:*)",
+      "Bash(git -C /Users/skrug/PycharmProjects/django-ninja-ts/.worktrees/openapi-ts-client-migration status)",
+      "Bash(git -C /Users/skrug/PycharmProjects/django-ninja-ts/.worktrees/openapi-ts-client-migration diff)",
+      "Bash(git -C /Users/skrug/PycharmProjects/django-ninja-ts/.worktrees/openapi-ts-client-migration log --oneline -5)",
+      "Bash(git -C /Users/skrug/PycharmProjects/django-ninja-ts/.worktrees/openapi-ts-client-migration add django_ninja_ts/management/commands/runserver.py tests/test_runserver.py)",
+      "Bash(git -C /Users/skrug/PycharmProjects/django-ninja-ts/.worktrees/openapi-ts-client-migration commit -m \"$\\(cat <<''EOF''\nfeat\\(generator\\): use openapi-ts-client instead of subprocess\n\nReplace subprocess-based openapi-generator-cli with direct Python calls\nto openapi-ts-client library. This eliminates external Node.js and Java\ndependencies, making the package pure Python.\n\nChanges:\n- Import generate_typescript_client and ClientFormat from openapi-ts-client\n- Add FORMAT_MAP to convert string settings to ClientFormat enum\n- Simplify _run_generator to call generate_typescript_client directly\n- Remove subprocess, platform, and tempfile imports\n- Remove GENERATOR_TIMEOUT constant\n- Update tests to mock generate_typescript_client\n- Remove obsolete subprocess-related tests \\(stderr, temp cleanup, timeout\\)\n- Add test for axios format generation\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(python:*)",
+      "Skill(superpowers:finishing-a-development-branch)",
+      "Bash(git checkout:*)",
+      "Bash(git pull:*)",
+      "Bash(git merge:*)",
+      "Bash(git branch:*)"
+    ]
+  }
+}

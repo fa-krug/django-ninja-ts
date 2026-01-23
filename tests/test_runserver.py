@@ -341,6 +341,7 @@ class TestRunGenerator:
             call_kwargs = mock_generate.call_args
             assert call_kwargs[1]["openapi_spec"] == schema_dict
             assert call_kwargs[1]["output_path"] == output_dir
+            assert call_kwargs[1]["clean"] is True  # Default is True
 
             # Verify hash file was written
             assert os.path.exists(hash_file)
@@ -349,6 +350,37 @@ class TestRunGenerator:
 
             output = command.stdout.getvalue()
             assert "SUCCESS:" in output
+
+    def test_generation_with_clean_disabled(self) -> None:
+        """Test generation with NINJA_TS_CLEAN=False."""
+        command = Command()
+        command.stdout = StringIO()
+        command.style = MagicMock()
+        command.style.SUCCESS = lambda x: f"SUCCESS: {x}"
+
+        schema_dict: dict[str, Any] = {
+            "openapi": "3.0.0",
+            "info": {"title": "Test"},
+            "paths": {},
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_dir = os.path.join(tmpdir, "output")
+            hash_file = os.path.join(output_dir, ".schema.hash")
+
+            with patch("django.conf.settings.NINJA_TS_FORMAT", "fetch", create=True):
+                with patch("django.conf.settings.NINJA_TS_CLEAN", False, create=True):
+                    with patch(
+                        "django_ninja_ts.management.commands.runserver.generate_typescript_client"
+                    ) as mock_generate:
+                        command._run_generator(
+                            schema_dict, output_dir, hash_file, "abc123"
+                        )
+
+            # Verify clean=False was passed
+            mock_generate.assert_called_once()
+            call_kwargs = mock_generate.call_args
+            assert call_kwargs[1]["clean"] is False
 
     def test_generation_failure(self) -> None:
         """Test handling of generation failure."""
@@ -434,6 +466,7 @@ class TestRunGenerator:
                     # Verify correct format was used
                     call_kwargs = mock_generate.call_args
                     assert call_kwargs[1]["output_format"] == ClientFormat.AXIOS
+                    assert call_kwargs[1]["clean"] is True  # Default is True
 
 
 class TestCommandIntegration:
@@ -609,6 +642,43 @@ class TestConfigurationCheck:
                 with patch("django.conf.settings.NINJA_TS_FORMAT", 123, create=True):
                     errors = check_ninja_ts_configuration(None)
                     assert any("E012" in str(e.id) for e in errors)
+
+    def test_clean_not_boolean(self) -> None:
+        """Test that non-boolean NINJA_TS_CLEAN raises error."""
+        from django_ninja_ts.apps import check_ninja_ts_configuration
+
+        with patch("django.conf.settings.NINJA_TS_API", "myapp.api.api", create=True):
+            with patch(
+                "django.conf.settings.NINJA_TS_OUTPUT_DIR", "/tmp/output", create=True
+            ):
+                with patch(
+                    "django.conf.settings.NINJA_TS_CLEAN", "not a bool", create=True
+                ):
+                    errors = check_ninja_ts_configuration(None)
+                    assert any("E013" in str(e.id) for e in errors)
+
+    def test_clean_valid_values(self) -> None:
+        """Test that valid NINJA_TS_CLEAN values are accepted."""
+        from django_ninja_ts.apps import check_ninja_ts_configuration
+
+        for clean_value in [True, False]:
+            with patch(
+                "django.conf.settings.NINJA_TS_API", "myapp.api.api", create=True
+            ):
+                with patch(
+                    "django.conf.settings.NINJA_TS_OUTPUT_DIR",
+                    "/tmp/output",
+                    create=True,
+                ):
+                    with patch(
+                        "django.conf.settings.NINJA_TS_CLEAN",
+                        clean_value,
+                        create=True,
+                    ):
+                        errors = check_ninja_ts_configuration(None)
+                        assert not any("E013" in str(e.id) for e in errors), (
+                            f"Clean value {clean_value} should be valid"
+                        )
 
     def test_valid_configuration(self) -> None:
         """Test that valid configuration returns no errors."""

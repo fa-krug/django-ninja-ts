@@ -164,4 +164,16 @@ def check_ninja_ts_configuration(
                 )
             )
 
+    # Check NINJA_TS_CLEAN
+    clean_value = getattr(settings, "NINJA_TS_CLEAN", None)
+    if clean_value is not None:
+        if not isinstance(clean_value, bool):
+            errors.append(
+                Error(
+                    "NINJA_TS_CLEAN must be a boolean",
+                    hint="Set NINJA_TS_CLEAN to True or False",
+                    id="ninja_ts.E013",
+                )
+            )
+
     return errors

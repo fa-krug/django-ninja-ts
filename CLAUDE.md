@@ -53,6 +53,7 @@ Django system checks validate all settings at startup:
 - `NINJA_TS_OUTPUT_DIR` - output directory for generated client
 - `NINJA_TS_DEBOUNCE_SECONDS` - delay before generation (default: 1.0)
 - `NINJA_TS_FORMAT` - client format: fetch, axios, or angular (default: fetch)
+- `NINJA_TS_CLEAN` - clear output directory before generation (default: True)
 
 ## Code Style
 

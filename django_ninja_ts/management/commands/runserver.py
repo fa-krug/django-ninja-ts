@@ -196,9 +196,10 @@ class Command(RunserverCommand):
             if os.path.exists(parent_dir) and not os.access(parent_dir, os.W_OK):
                 raise OSError(f"Output directory parent is not writable: {parent_dir}")
 
-            # Get format from settings
+            # Get format and clean settings
             format_name: str = getattr(settings, "NINJA_TS_FORMAT", "fetch")
             client_format = FORMAT_MAP[format_name]
+            clean: bool = getattr(settings, "NINJA_TS_CLEAN", True)
 
             self.stdout.write(f"Generating {format_name} client to {output_dir}...")
             logger.info(f"Generating {format_name} TypeScript client to: {output_dir}")
@@ -207,6 +208,7 @@ class Command(RunserverCommand):
                 openapi_spec=schema_dict,
                 output_format=client_format,
                 output_path=output_dir,
+                clean=clean,
             )
 
             # Save new hash
