@@ -21,14 +21,14 @@ Automatically builds your TypeScript client whenever your Django Ninja schema ch
    ]
    ```
 
-## Requirements
+## Migrating from v1.x
 
-This package requires the following external dependencies:
+v2.0 switched from `openapi-generator-cli` (Node.js/Java) to `openapi-ts-client` (pure Python).
 
-- **Node.js** (for `npx`)
-- **Java JRE** (for OpenAPI Generator)
-
-The package will provide installation instructions if these are missing.
+**Breaking changes:**
+- Remove `NINJA_TS_CMD_ARGS` from your settings (no longer supported)
+- Add `NINJA_TS_FORMAT` if you need axios or angular (fetch is default)
+- Node.js and Java are no longer required
 
 ## Configuration
 
@@ -43,13 +43,12 @@ NINJA_TS_API = 'myproject.api.api'
 # Where to output the generated client
 NINJA_TS_OUTPUT_DIR = os.path.join(BASE_DIR, '../frontend/src/app/shared/api')
 
+# Optional: Client format - 'fetch' (default), 'axios', or 'angular'
+NINJA_TS_FORMAT = 'fetch'
+
 # Optional: Debounce time in seconds (prevents rapid rebuilds on "Save All")
 # Default: 1.0
-NINJA_TS_DEBOUNCE_SECONDS = 0.5
-
-# Optional: Override generator arguments
-# Default: ['generate', '-g', 'typescript-fetch', '-p', 'removeOperationIdPrefix=true']
-# NINJA_TS_CMD_ARGS = ['generate', '-g', 'typescript-axios']
+# NINJA_TS_DEBOUNCE_SECONDS = 0.5
 ```
 
 ## How It Works
@@ -57,7 +56,7 @@ NINJA_TS_DEBOUNCE_SECONDS = 0.5
 1. When you run `python manage.py runserver`, the package intercepts the command
 2. It loads your Django Ninja API and extracts the OpenAPI schema
 3. It calculates a hash of the schema and compares it to the previous build
-4. If the schema has changed, it runs `openapi-generator-cli` via `npx` to generate the TypeScript client
+4. If the schema has changed, it runs `openapi-ts-client` to generate the TypeScript client
 5. The hash is stored in `.schema.hash` in the output directory to avoid unnecessary rebuilds
 
 ## Configuration Options
@@ -66,25 +65,19 @@ NINJA_TS_DEBOUNCE_SECONDS = 0.5
 |---------|----------|---------|-------------|
 | `NINJA_TS_API` | Yes | - | Dot-notation path to your NinjaAPI instance |
 | `NINJA_TS_OUTPUT_DIR` | Yes | - | Directory where the TypeScript client will be generated |
+| `NINJA_TS_FORMAT` | No | `fetch` | Client format: `fetch`, `axios`, or `angular` |
 | `NINJA_TS_DEBOUNCE_SECONDS` | No | `1.0` | Delay before generation to handle rapid file saves |
-| `NINJA_TS_CMD_ARGS` | No | See below | Arguments passed to openapi-generator-cli |
-
-### Default Generator Arguments
-
-```python
-['generate', '-g', 'typescript-fetch', '-p', 'removeOperationIdPrefix=true']
-```
 
 ### Example: Using Axios
 
 ```python
-NINJA_TS_CMD_ARGS = ['generate', '-g', 'typescript-axios']
+NINJA_TS_FORMAT = 'axios'
 ```
 
 ### Example: Using Angular
 
 ```python
-NINJA_TS_CMD_ARGS = ['generate', '-g', 'typescript-angular', '-p', 'removeOperationIdPrefix=true']
+NINJA_TS_FORMAT = 'angular'
 ```
 
 ## Logging
@@ -156,15 +149,6 @@ def health(request):
     return {"status": "ok"}
 ```
 
-#### Generation hangs indefinitely
-
-**Problem:** The TypeScript generation process never completes.
-
-**Solution:** The package has a 120-second timeout by default. If generation regularly times out:
-1. Check that Java and Node.js are properly installed
-2. Try running `npx openapi-generator-cli generate --help` manually
-3. Check for network issues (first run downloads the generator)
-
 #### "Output directory parent is not writable" error
 
 **Problem:** The package cannot create files in the specified output directory.
@@ -186,15 +170,6 @@ chmod 755 /path/to/parent/directory
 1. Delete the `.schema.hash` file in your output directory
 2. Restart the development server
 3. If using `NINJA_TS_DEBOUNCE_SECONDS`, wait for the debounce period
-
-#### Windows-specific issues
-
-**Problem:** Commands fail on Windows with shell-related errors.
-
-**Solution:** The package automatically uses `shell=True` on Windows for `npx` compatibility. If you still have issues:
-1. Ensure Node.js is in your PATH
-2. Try running from PowerShell instead of Command Prompt
-3. Run `npx openapi-generator-cli` manually to verify setup
 
 ### Configuration Validation
 
@@ -224,10 +199,6 @@ LOGGING = {
     },
 }
 ```
-
-## Supported OpenAPI Generator Versions
-
-This package works with any version of `@openapitools/openapi-generator-cli` available via npm. The generator is automatically downloaded on first use.
 
 ## Contributing
 
