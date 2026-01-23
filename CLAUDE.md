@@ -41,19 +41,18 @@ django_ninja_ts/
 
 **Generation Flow (`runserver.py`):**
 1. Debounce rapid file saves (configurable delay)
-2. Check for Node.js and Java dependencies
-3. Load NinjaAPI from configured Django settings path
-4. Get OpenAPI schema and validate structure
-5. Calculate SHA256 hash and compare with `.schema.hash`
-6. Run `npx openapi-generator-cli` only if schema changed
-7. Start Django development server
+2. Load NinjaAPI from configured Django settings path
+3. Get OpenAPI schema and validate structure
+4. Calculate SHA256 hash and compare with `.schema.hash`
+5. Call `openapi-ts-client` library only if schema changed
+6. Start Django development server
 
 **Configuration Validation (`apps.py`):**
 Django system checks validate all settings at startup:
 - `NINJA_TS_API` - path to NinjaAPI instance (e.g., `"myapp.api.api"`)
 - `NINJA_TS_OUTPUT_DIR` - output directory for generated client
-- `NINJA_TS_DEBOUNCE_SECONDS` - delay before generation (default: 0)
-- `NINJA_TS_CMD_ARGS` - custom OpenAPI generator arguments
+- `NINJA_TS_DEBOUNCE_SECONDS` - delay before generation (default: 1.0)
+- `NINJA_TS_FORMAT` - client format: fetch, axios, or angular (default: fetch)
 
 ## Code Style
 
@@ -86,7 +85,3 @@ test(apps): add system check validation tests
 chore(deps): update openapi-generator-cli version
 ```
 
-## External Requirements
-
-- Node.js (for npx command)
-- Java JRE (for OpenAPI Generator)
