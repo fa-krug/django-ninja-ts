@@ -2,6 +2,17 @@
 
 <!-- version list -->
 
+## v2.0.0 (2026-01-23)
+
+### Features
+
+- Release v2.0 with openapi-ts-client
+  ([`60dbc0f`](https://github.com/fa-krug/django-ninja-ts/commit/60dbc0f314f9d29dd3f46a85834feb394bf6fa37))
+
+- **generator**: Add NINJA_TS_CLEAN setting with clean parameter support
+  ([`736894e`](https://github.com/fa-krug/django-ninja-ts/commit/736894eb88bcaa85134e14f281bbf4ed6c2193b4))
+
+
 ## v1.1.0 (2026-01-23)
 
 ### Chores
