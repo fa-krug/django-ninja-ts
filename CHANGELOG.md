@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v2.0.2 (2026-01-24)
+
+### Bug Fixes
+
+- **deps**: Update openapi-ts-client to 1.4.0
+  ([`b7da189`](https://github.com/fa-krug/django-ninja-ts/commit/b7da1891f20d75211ade1e386d92756eceab7fa5))
+
+
 ## v2.0.1 (2026-01-23)
 
 ### Bug Fixes
