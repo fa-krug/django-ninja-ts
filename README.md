@@ -53,6 +53,10 @@ NINJA_TS_FORMAT = 'fetch'
 # Optional: Clear output directory before generation
 # Default: True
 # NINJA_TS_CLEAN = True
+
+# Optional: Enable/disable auto-generation on runserver
+# Default: True
+# NINJA_TS_AUTO_GENERATE = True
 ```
 
 ## How It Works
@@ -72,6 +76,7 @@ NINJA_TS_FORMAT = 'fetch'
 | `NINJA_TS_FORMAT` | No | `fetch` | Client format: `fetch`, `axios`, or `angular` |
 | `NINJA_TS_DEBOUNCE_SECONDS` | No | `1.0` | Delay before generation to handle rapid file saves |
 | `NINJA_TS_CLEAN` | No | `True` | Clear output directory before generation |
+| `NINJA_TS_AUTO_GENERATE` | No | `True` | Enable auto-generation on runserver |
 
 ### Example: Using Axios
 
@@ -84,6 +89,31 @@ NINJA_TS_FORMAT = 'axios'
 ```python
 NINJA_TS_FORMAT = 'angular'
 ```
+
+### Example: Disabling Auto-Generation
+
+If you prefer to generate the client manually instead of on every server restart:
+
+```python
+NINJA_TS_AUTO_GENERATE = False
+```
+
+## Manual Generation
+
+You can manually generate the TypeScript client using the `generate_ts_client` command:
+
+```bash
+# Generate client (only if schema changed)
+python manage.py generate_ts_client
+
+# Force regeneration even if schema hasn't changed
+python manage.py generate_ts_client --force
+```
+
+This is useful when:
+- You've disabled auto-generation with `NINJA_TS_AUTO_GENERATE = False`
+- You want to generate the client in CI/CD pipelines
+- You need to regenerate without restarting the server
 
 ## Logging
 

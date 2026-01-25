@@ -88,3 +88,18 @@ test(apps): add system check validation tests
 chore(deps): update openapi-generator-cli version
 ```
 
+## Documentation Maintenance
+
+**IMPORTANT:** After making any code changes, always update the relevant documentation:
+
+1. **README.md** - Update user-facing documentation:
+   - New settings or configuration options
+   - New commands or features
+   - Changes to existing behavior
+   - New troubleshooting sections if needed
+
+2. **CLAUDE.md** - Update developer/AI guidance:
+   - Architecture changes
+   - New files or commands
+   - Updated configuration options in the settings list
+
