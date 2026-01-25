@@ -36,7 +36,8 @@ The package extends Django's `runserver` command to automatically generate TypeS
 django_ninja_ts/
 ├── apps.py              # Django app config with system checks for configuration validation
 └── management/commands/
-    └── runserver.py     # Custom runserver: debounce → check deps → generate → start server
+    ├── runserver.py         # Custom runserver: debounce → check deps → generate → start server
+    └── generate_ts_client.py # Manual generation command with --force option
 ```
 
 **Generation Flow (`runserver.py`):**
@@ -54,6 +55,7 @@ Django system checks validate all settings at startup:
 - `NINJA_TS_DEBOUNCE_SECONDS` - delay before generation (default: 1.0)
 - `NINJA_TS_FORMAT` - client format: fetch, axios, or angular (default: fetch)
 - `NINJA_TS_CLEAN` - clear output directory before generation (default: True)
+- `NINJA_TS_AUTO_GENERATE` - enable auto-generation on runserver (default: True)
 
 ## Code Style
 

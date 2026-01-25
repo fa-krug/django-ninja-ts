@@ -176,4 +176,16 @@ def check_ninja_ts_configuration(
                 )
             )
 
+    # Check NINJA_TS_AUTO_GENERATE
+    auto_generate = getattr(settings, "NINJA_TS_AUTO_GENERATE", None)
+    if auto_generate is not None:
+        if not isinstance(auto_generate, bool):
+            errors.append(
+                Error(
+                    "NINJA_TS_AUTO_GENERATE must be a boolean",
+                    hint="Set NINJA_TS_AUTO_GENERATE to True or False",
+                    id="ninja_ts.E014",
+                )
+            )
+
     return errors

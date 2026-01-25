@@ -502,6 +502,92 @@ class TestCommandIntegration:
 
         assert call_order == ["debounce", "generate", "super_inner_run"]
 
+    def test_inner_run_skips_generation_when_auto_generate_false(self) -> None:
+        """Test that inner_run skips generation when NINJA_TS_AUTO_GENERATE is False."""
+        command = Command()
+        call_order: list[str] = []
+
+        def mock_debounce() -> None:
+            call_order.append("debounce")
+
+        def mock_generate() -> None:
+            call_order.append("generate")
+
+        def mock_super_inner_run(*args: Any, **kwargs: Any) -> None:
+            call_order.append("super_inner_run")
+
+        command._debounce = mock_debounce  # type: ignore[method-assign]
+        command._generate_client = mock_generate  # type: ignore[method-assign]
+
+        with patch.object(Command.__bases__[0], "inner_run", mock_super_inner_run):
+            with patch(
+                "django.conf.settings.NINJA_TS_AUTO_GENERATE",
+                False,
+                create=True,
+            ):
+                command.inner_run()
+
+        # Only super_inner_run should be called, not debounce or generate
+        assert call_order == ["super_inner_run"]
+
+    def test_inner_run_generates_when_auto_generate_true(self) -> None:
+        """Test that inner_run generates when NINJA_TS_AUTO_GENERATE is True."""
+        command = Command()
+        call_order: list[str] = []
+
+        def mock_debounce() -> None:
+            call_order.append("debounce")
+
+        def mock_generate() -> None:
+            call_order.append("generate")
+
+        def mock_super_inner_run(*args: Any, **kwargs: Any) -> None:
+            call_order.append("super_inner_run")
+
+        command._debounce = mock_debounce  # type: ignore[method-assign]
+        command._generate_client = mock_generate  # type: ignore[method-assign]
+
+        with patch.object(Command.__bases__[0], "inner_run", mock_super_inner_run):
+            with patch(
+                "django.conf.settings.NINJA_TS_AUTO_GENERATE",
+                True,
+                create=True,
+            ):
+                command.inner_run()
+
+        assert call_order == ["debounce", "generate", "super_inner_run"]
+
+    def test_inner_run_defaults_to_auto_generate_true(self) -> None:
+        """Test that inner_run defaults to auto_generate=True when not set."""
+        command = Command()
+        call_order: list[str] = []
+
+        def mock_debounce() -> None:
+            call_order.append("debounce")
+
+        def mock_generate() -> None:
+            call_order.append("generate")
+
+        def mock_super_inner_run(*args: Any, **kwargs: Any) -> None:
+            call_order.append("super_inner_run")
+
+        command._debounce = mock_debounce  # type: ignore[method-assign]
+        command._generate_client = mock_generate  # type: ignore[method-assign]
+
+        # Ensure NINJA_TS_AUTO_GENERATE is not set
+        with patch.object(Command.__bases__[0], "inner_run", mock_super_inner_run):
+            # Use delattr to ensure attribute doesn't exist
+            with patch(
+                "django.conf.settings",
+                autospec=True,
+            ) as mock_settings:
+                # Remove the attribute to simulate it not being set
+                del mock_settings.NINJA_TS_AUTO_GENERATE
+                command.inner_run()
+
+        # Should still generate because default is True
+        assert call_order == ["debounce", "generate", "super_inner_run"]
+
 
 class TestConfigurationCheck:
     """Tests for the configuration validation check."""
@@ -678,6 +764,45 @@ class TestConfigurationCheck:
                         errors = check_ninja_ts_configuration(None)
                         assert not any("E013" in str(e.id) for e in errors), (
                             f"Clean value {clean_value} should be valid"
+                        )
+
+    def test_auto_generate_not_boolean(self) -> None:
+        """Test that non-boolean NINJA_TS_AUTO_GENERATE raises error."""
+        from django_ninja_ts.apps import check_ninja_ts_configuration
+
+        with patch("django.conf.settings.NINJA_TS_API", "myapp.api.api", create=True):
+            with patch(
+                "django.conf.settings.NINJA_TS_OUTPUT_DIR", "/tmp/output", create=True
+            ):
+                with patch(
+                    "django.conf.settings.NINJA_TS_AUTO_GENERATE",
+                    "not a bool",
+                    create=True,
+                ):
+                    errors = check_ninja_ts_configuration(None)
+                    assert any("E014" in str(e.id) for e in errors)
+
+    def test_auto_generate_valid_values(self) -> None:
+        """Test that valid NINJA_TS_AUTO_GENERATE values are accepted."""
+        from django_ninja_ts.apps import check_ninja_ts_configuration
+
+        for auto_generate_value in [True, False]:
+            with patch(
+                "django.conf.settings.NINJA_TS_API", "myapp.api.api", create=True
+            ):
+                with patch(
+                    "django.conf.settings.NINJA_TS_OUTPUT_DIR",
+                    "/tmp/output",
+                    create=True,
+                ):
+                    with patch(
+                        "django.conf.settings.NINJA_TS_AUTO_GENERATE",
+                        auto_generate_value,
+                        create=True,
+                    ):
+                        errors = check_ninja_ts_configuration(None)
+                        assert not any("E014" in str(e.id) for e in errors), (
+                            f"Auto generate value {auto_generate_value} should be valid"
                         )
 
     def test_valid_configuration(self) -> None:

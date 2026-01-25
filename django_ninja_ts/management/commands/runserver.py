@@ -53,11 +53,15 @@ class Command(RunserverCommand):
 
     def inner_run(self, *args: Any, **options: Any) -> None:
         """Run the server with TypeScript client generation."""
-        # 1. Debounce (Wait for rapid file saves to settle)
-        self._debounce()
+        # Check if auto-generation is enabled (default: True)
+        auto_generate: bool = getattr(settings, "NINJA_TS_AUTO_GENERATE", True)
 
-        # 2. Run generation
-        self._generate_client()
+        if auto_generate:
+            # 1. Debounce (Wait for rapid file saves to settle)
+            self._debounce()
+
+            # 2. Run generation
+            self._generate_client()
 
         # 3. Start the actual Django server
         super().inner_run(*args, **options)
